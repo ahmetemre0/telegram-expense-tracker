@@ -2,6 +2,38 @@ const User = require("../models/User");
 const { generateChart } = require("../helpers/chartHelper");
 const { updateUserAnalytics } = require("../helpers/analyticsHelper");
 const fs = require("fs");
+const moment = require("moment");
+
+const messages = {
+    noBudget: {
+        en: "⚠️ You need to set a budget first using /setbudget.",
+        tr: "⚠️ Önce /setbudget komutu ile bir bütçe belirlemelisiniz."
+    },
+    noExpensesRecorded: {
+        en: "❌ No expenses recorded.",
+        tr: "❌ Kaydedilmiş harcama bulunamadı."
+    },
+    expenseAdded: {
+        en: "✅ Expense of {{amount}} {{currency}} added in category: {{category}}",
+        tr: "✅ {{amount}} {{currency}} harcama, {{category}} kategorisine eklendi."
+    },
+    expenseList: {
+        en: "📊 **Your Expenses:**\n",
+        tr: "📊 **Harcamalarınız:**\n"
+    },
+    spendingByCategory: {
+        en: "📊 Expense Breakdown by Category",
+        tr: "📊 Kategoriye Göre Harcama Dağılımı"
+    },
+    spendingOverTime: {
+        en: "📈 Your Spending Over Time",
+        tr: "📈 Zaman İçindeki Harcamalarınız"
+    },
+    expense: {
+        en: "📌{{category}}: {{amount}} {{currency}} on {{date}}\n",
+        tr: "📌{{category}}: {{amount}} {{currency}} - {{date}} \n"
+    }
+};
 
 module.exports = {
     addExpense: async (bot, msg, match) => {
@@ -12,7 +44,7 @@ module.exports = {
     let user = await User.findOne({ chatId });
 
     if (!user) {
-        bot.sendMessage(chatId, "⚠️ You need to set a budget first using /setbudget.");
+        bot.sendMessage(chatId, messages.noBudget[user.language]);
         return;
     }
 
@@ -23,7 +55,10 @@ module.exports = {
     // Update analytics
     await updateUserAnalytics(chatId);
 
-    bot.sendMessage(chatId, `✅ Expense of $${amount} added in category: ${category}`);
+    bot.sendMessage(chatId, messages.expenseAdded[user.language]
+        .replace("{{amount}}", amount)
+        .replace("{{category}}", category)
+        .replace("{{currency}}", user.currency));
     },
 
     listExpenses: async (bot, msg) => {
@@ -31,13 +66,17 @@ module.exports = {
         const user = await User.findOne({ chatId });
 
         if (!user || user.expenses.length === 0) {
-            bot.sendMessage(chatId, "No expenses recorded.");
+            bot.sendMessage(chatId, messages.noExpensesRecorded[user.language]);
             return;
         }
 
-        let response = "📊 **Your Expenses:**\n";
+        let response = messages.expenseList[user.language];
         user.expenses.forEach(exp => {
-            response += `📌 ${exp.category}: $${exp.amount} on ${exp.date.toDateString()}\n`;
+            response += messages.expense[user.language]
+                .replace("{{category}}", exp.category)
+                .replace("{{amount}}", exp.amount)
+                .replace("{{currency}}", user.currency)
+                .replace("{{date}}", moment(exp.date).format("YYYY-MM-DD"));
         });
 
         bot.sendMessage(chatId, response);
@@ -49,7 +88,7 @@ module.exports = {
         const user = await User.findOne({ chatId });
 
         if (!user || user.expenses.length === 0) {
-            bot.sendMessage(chatId, "❌ No expenses recorded.");
+            bot.sendMessage(chatId, messages.noExpensesRecorded[user.language]);
             return;
         }
 
@@ -66,7 +105,7 @@ module.exports = {
         const filePath = await generateChart(labels, values, "pie", "Expense Breakdown");
 
         // Send the chart to the user
-        bot.sendPhoto(chatId, filePath, { caption: "📊 Expense Breakdown by Category" });
+        bot.sendPhoto(chatId, filePath, { caption: messages.spendingByCategory[user.language] });
 
         // Cleanup
         setTimeout(() => fs.unlinkSync(filePath), 10000);
@@ -78,11 +117,9 @@ module.exports = {
         const user = await User.findOne({ chatId });
 
         if (!user || user.expenses.length === 0) {
-            bot.sendMessage(chatId, "❌ No expenses recorded.");
+            bot.sendMessage(chatId, messages.noExpensesRecorded[user.language]);
             return;
         }
-
-        const moment = require("moment");
 
         // Group expenses by date
         const dateMap = {};
@@ -98,7 +135,7 @@ module.exports = {
         const filePath = await generateChart(labels, values, "line", "Spending Over Time");
 
         // Send the chart to the user
-        bot.sendPhoto(chatId, filePath, { caption: "📈 Your Spending Over Time" });
+        bot.sendPhoto(chatId, filePath, { caption: messages.spendingOverTime[user.language] });
 
         // Cleanup
         setTimeout(() => fs.unlinkSync(filePath), 10000);
