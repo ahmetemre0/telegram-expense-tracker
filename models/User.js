@@ -1,7 +1,10 @@
+const { lang } = require("moment");
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
     chatId: { type: Number, required: true, unique: true },
+    language: { type: String, default: "en" },
+    currency: { type: String, default: "USD" },
     budget: { type: Number, default: 0 },
     expenses: [
         {
