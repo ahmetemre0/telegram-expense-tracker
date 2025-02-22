@@ -6,6 +6,7 @@ const startCommand = require("./commands/start");
 const budgetCommands = require("./commands/budget");
 const expenseCommands = require("./commands/expenses");
 const categoryCommands = require("./commands/categories");
+const helpCommand = require("./commands/help");
 
 
 // Connect to MongoDB
@@ -29,6 +30,8 @@ bot.onText(/\/updatecategory (.+)/, (msg, match) => categoryCommands.updateCateg
 
 bot.onText(/\/spendingbycategory/, (msg) => expenseCommands.spendingByCategory(bot, msg));
 bot.onText(/\/spendingovertime/, (msg) => expenseCommands.spendingOverTime(bot, msg));
+
+bot.onText(/\/help/, (msg) =>  helpCommand(bot, msg));
 
 
 
